@@ -15,12 +15,14 @@ import com.samsung.android.sdk.healthdata.HealthDataStore.ConnectionListener
 import com.samsung.android.sdk.healthdata.HealthPermissionManager
 import com.samsung.android.sdk.healthdata.HealthPermissionManager.*
 import kotlinx.android.synthetic.main.activity_main.*
+import java.lang.Boolean.FALSE
 import java.util.*
+import kotlin.collections.LinkedHashMap
 
 
 class MainActivity : AppCompatActivity() {
 
-    companion object{
+    companion object {
         const val APP_TAG = "SimpleHealth"
     }
 
@@ -30,12 +32,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        // Create a HealthDataStore instance and set its listener
-        // Create a HealthDataStore instance and set its listener
         mStore = HealthDataStore(this, mConnectionListener)
-        // Request the connection to the health data store
-        // Request the connection to the health data store
         mStore.connectService()
     }
 
@@ -79,8 +76,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showConnectionFailureDialog(error: HealthConnectionErrorResult)
-    {
+    private fun showConnectionFailureDialog(error: HealthConnectionErrorResult) {
         if (isFinishing) {
             return
         }
@@ -116,15 +112,14 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-
     private fun isPermissionAcquired(): Boolean {
         val permKey =
             PermissionKey(HealthConstants.StepCount.HEALTH_DATA_TYPE, PermissionType.READ)
         val pmsManager = HealthPermissionManager(mStore)
         try { // Check whether the permissions that this application needs are acquired
             val resultMap =
-                pmsManager.isPermissionAcquired(Collections.singleton(permKey))
-            return resultMap[permKey]!!
+                pmsManager.isPermissionAcquired(generatePermissionKeySet())
+            return !resultMap.values.contains(FALSE)
         } catch (e: java.lang.Exception) {
             Log.e(APP_TAG, "Permission request fails.", e)
         }
@@ -137,12 +132,12 @@ class MainActivity : AppCompatActivity() {
             PermissionKey(HealthConstants.StepCount.HEALTH_DATA_TYPE, PermissionType.READ)
         val pmsManager = HealthPermissionManager(mStore)
         try { // Show user permission UI for allowing user to change options
-            pmsManager.requestPermissions(Collections.singleton(permKey), this@MainActivity)
+            pmsManager.requestPermissions(generatePermissionKeySet(), this@MainActivity)
                 .setResultListener { result: PermissionResult ->
                     Log.d(APP_TAG, "Permission callback is received.")
                     val resultMap =
                         result.resultMap
-                    if (resultMap.containsValue(java.lang.Boolean.FALSE)) {
+                    if (resultMap.containsValue(FALSE)) {
                         updateStepCountView("")
                         showPermissionAlarmDialog()
                     } else { // Get the current step count and display it
@@ -154,10 +149,71 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun generatePermissionKeySet(): Set<PermissionKey>? {
+        val pmsKeySet: MutableSet<PermissionKey> = HashSet()
+        // Add the read and write permissions to Permission KeySet
+        pmsKeySet.add(
+            PermissionKey(
+                HealthConstants.StepCount.HEALTH_DATA_TYPE,
+                PermissionType.READ
+            )
+        )
+        pmsKeySet.add(PermissionKey(HealthConstants.Weight.HEALTH_DATA_TYPE, PermissionType.READ))
+        pmsKeySet.add(PermissionKey(HealthConstants.Height.HEALTH_DATA_TYPE, PermissionType.READ))
+        pmsKeySet.add(
+            PermissionKey(
+                HealthConstants.BodyTemperature.HEALTH_DATA_TYPE,
+                PermissionType.READ
+            )
+        )
+        pmsKeySet.add(
+            PermissionKey(
+                HealthConstants.BloodGlucose.HEALTH_DATA_TYPE,
+                PermissionType.READ
+            )
+        )
+        pmsKeySet.add(
+            PermissionKey(
+                HealthConstants.BloodPressure.HEALTH_DATA_TYPE,
+                PermissionType.READ
+            )
+        )
+        pmsKeySet.add(
+            PermissionKey(
+                HealthConstants.BloodPressure.HEALTH_DATA_TYPE,
+                PermissionType.READ
+            )
+        )
+        pmsKeySet.add(
+            PermissionKey(
+                HealthConstants.Electrocardiogram.HEALTH_DATA_TYPE,
+                PermissionType.READ
+            )
+        )
+        pmsKeySet.add(
+            PermissionKey(
+                HealthConstants.HeartRate.HEALTH_DATA_TYPE,
+                PermissionType.READ
+            )
+        )
+        pmsKeySet.add(
+            PermissionKey(
+                HealthConstants.OxygenSaturation.HEALTH_DATA_TYPE,
+                PermissionType.READ
+            )
+        )
+        pmsKeySet.add(PermissionKey(HealthConstants.HbA1c.HEALTH_DATA_TYPE, PermissionType.READ))
+        return pmsKeySet
+    }
 
-    private val mStepCountObserver = StepCountObserver { count: Int ->
-        Log.d(APP_TAG, "Step reported : $count")
-        updateStepCountView(count.toString())
+
+    private val mStepCountObserver = StepCountObserver { hashMap ->
+        Log.e(APP_TAG, "" + hashMap)
+        var strValue = ""
+        for (map in hashMap.entries) {
+            Log.d(APP_TAG, "Data reported for ${map.key} : ${map.value}")
+            updateStepCountView("${map.key} : ${map.value}\n")
+        }
     }
 
     private fun updateStepCountView(count: String) {
